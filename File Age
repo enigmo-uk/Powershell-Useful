@@ -1,0 +1,69 @@
+# Filename      - FileAgeAlert.ps1
+# Purpose       - Checks the contents of a given directory and/or file for last modified file time and emails
+#                 an alert if the last written file is over a certain age
+# Author        - enigmouk
+# Last Revision - 12112020
+
+# --------------------------------------------------------------------------------------------
+
+# SET VARS
+
+$dir = "<path to directory>" # Directory to be tested
+$file = "What file am I looking to test?"
+
+$emailRecipients = "recipient@domain.co.uk" # Primary email recipient list. Add recipients with commas
+$emailAlerts = "alertRecipient@domain.co.uk" # CC field. Idea is Recipient will be one address when all OK. Another address ccd on alert for job creation
+$emailFrom = "sender@domain.co.uk" # Email sending account
+$emailSmtpServer = "mail.domain.com" # SMTP server
+
+$days = 1 # How long into the past should the test look for a last modified date?
+$hours = 0
+$minutes = 0
+
+$latest = Get-ChildItem -file $file -Path $dir | Sort-Object LastWriteTime -Descending | Select-Object -First 1 # Scans dir for files, pulls last modified time and lists in reverse order. Pulls the first item from the list only
+# $latest.Name          # Test. Outputs most recently modified file's name to console
+# $latest.lastwritetime # Test. Outputs most recently modified file's last mod time to console
+$modtime = $latest.LastWriteTime # Casts the last mod time as a new variable for simple inclusion in email fields
+
+# --------------------------------------------------------------------------------------------
+# TESTS
+
+# If a file exists with a last modified time less than the values given, raise an alert
+
+if ($latest.LastWriteTime -lt (get-date).AddDays(-$days).AddHours(-$hours).AddMinutes(-$minutes)) # Note the negative in front of time variables as we are concerned with times in the past
+    {
+    $Subject = "A New File Has Not Been Seen Since $modtime"
+    $emailTo = $emailRecipients ,$emailAlerts
+    $body = "Local Path: \\server\path `n"
+    $body += $latest.Name
+    $body += "`n"
+    $body += "`n"
+    $body += "More relevant information"
+    $body += "`n"
+    $body += "Criteria: Greater than 24hrs old"
+    $body += "`n"
+    $body += "`n"
+    $body += "Script running from \\server\path\"
+    $body += "`n"
+    $body += "Script schedule: When am I run?"
+    }
+# If not, all is OK
+
+else
+    {
+    $Subject = "File Creation Is OK"
+    $emailTo = $emailRecipients
+    $body = "The last new file was generated at $modtime"
+    $body += "`n"
+    $body += "All is OK"
+    $body += "`n"
+    $body += "`n"
+    $body += "Criteria: Greater than 24hrs old"
+    $body += "`n"
+    $body += "Script running from \\server\path\"
+    $body += "`n"
+    $body += "Script schedule: 10am Daily"
+    }
+
+# Send the email generated above
+Send-MailMessage -From $emailFrom -To $emailTo -SmtpServer $emailSmtpServer -Subject $Subject -Body $body
