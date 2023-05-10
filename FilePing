@@ -1,0 +1,40 @@
+# Filename      - FilePing.ps1
+# Purpose       - Pulls IP addresses from a file and check they're online
+# Author        - enigmo
+# Last Revision - 22122020 - Initial build
+#
+# --------------------------------------------------------------------------------------------
+
+# SET VARS
+$IPFile ="<path to file containing IPs>"  # Path to the file containing IPs
+$emailTo = "email@domain.com" # Primary email recipient list. Add recipients with commas
+$emailFrom = "sendemail@domain.com" # Email sending account
+$emailSmtpServer = "mail.domain.com" # SMTP server
+$subject = "Subject"
+
+# Functions
+Function ExtractValidIPAddress($String)
+    {
+    $IPregex=‘(?<Address>((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))’
+    If ($String -Match $IPregex) {$Matches.Address} # Test. Is there a string in the line that looks like and IP address
+    Else {continue} # If there isn't, skip it and carry on
+    # If ($String -NotMatch $IPregex){continue} # Can also use this instead of an Else
+    }
+ 
+#Log line
+foreach($line in Get-Content $IPFile)  # Step through each line of the file
+    {
+    $pingIt = ExtractValidIPAddress $Line  # Call function described above to pull a valid format IP address
+    $body += ($pingIt + ": ")
+    # $pingIt  # Uncomment to check IPs are being properly pulled
+    $alive = Test-Connection -Quiet $pingIt # Quiet flag returns a simple boolean
+    # $alive
+    $body += $alive  
+    $body += "`n"
+    }
+
+$body += "Script location:"
+$body += "Schedule:"
+
+# Send the email generated above
+Send-MailMessage -From $emailFrom -To $emailTo -SmtpServer $emailSmtpServer -Subject $Subject -Body $body
